@@ -43,40 +43,42 @@ import com.doublesymmetry.kotlinaudio.notification.NotificationManager
 import com.doublesymmetry.kotlinaudio.players.components.PlayerCache
 import com.doublesymmetry.kotlinaudio.players.components.getAudioItemHolder
 import com.doublesymmetry.kotlinaudio.utils.isUriLocalFile
-import com.google.android.exoplayer2.C
-import com.google.android.exoplayer2.DefaultLoadControl
-import com.google.android.exoplayer2.DefaultLoadControl.Builder
-import com.google.android.exoplayer2.DefaultLoadControl.DEFAULT_BACK_BUFFER_DURATION_MS
-import com.google.android.exoplayer2.DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS
-import com.google.android.exoplayer2.DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_MS
-import com.google.android.exoplayer2.DefaultLoadControl.DEFAULT_MAX_BUFFER_MS
-import com.google.android.exoplayer2.DefaultLoadControl.DEFAULT_MIN_BUFFER_MS
-import com.google.android.exoplayer2.ExoPlayer
-import com.google.android.exoplayer2.ForwardingPlayer
-import com.google.android.exoplayer2.MediaItem
-import com.google.android.exoplayer2.MediaMetadata
-import com.google.android.exoplayer2.PlaybackException
-import com.google.android.exoplayer2.Player
-import com.google.android.exoplayer2.Player.Listener
-import com.google.android.exoplayer2.audio.AudioAttributes
-import com.google.android.exoplayer2.ext.mediasession.MediaSessionConnector
-import com.google.android.exoplayer2.extractor.DefaultExtractorsFactory
-import com.google.android.exoplayer2.metadata.Metadata
-import com.google.android.exoplayer2.source.MediaSource
-import com.google.android.exoplayer2.source.ProgressiveMediaSource
-import com.google.android.exoplayer2.source.dash.DashMediaSource
-import com.google.android.exoplayer2.source.dash.DefaultDashChunkSource
-import com.google.android.exoplayer2.source.hls.HlsMediaSource
-import com.google.android.exoplayer2.source.smoothstreaming.DefaultSsChunkSource
-import com.google.android.exoplayer2.source.smoothstreaming.SsMediaSource
-import com.google.android.exoplayer2.upstream.DataSource
-import com.google.android.exoplayer2.upstream.DataSpec
-import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory
-import com.google.android.exoplayer2.upstream.DefaultHttpDataSource
-import com.google.android.exoplayer2.upstream.RawResourceDataSource
-import com.google.android.exoplayer2.upstream.cache.CacheDataSource
-import com.google.android.exoplayer2.upstream.cache.SimpleCache
-import com.google.android.exoplayer2.util.Util
+import androidx.media3.common.C
+import androidx.media3.exoplayer.DefaultLoadControl
+import androidx.media3.exoplayer.DefaultLoadControl.Builder
+import androidx.media3.exoplayer.DefaultLoadControl.DEFAULT_BACK_BUFFER_DURATION_MS
+import androidx.media3.exoplayer.DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS
+import androidx.media3.exoplayer.DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_MS
+import androidx.media3.exoplayer.DefaultLoadControl.DEFAULT_MAX_BUFFER_MS
+import androidx.media3.exoplayer.DefaultLoadControl.DEFAULT_MIN_BUFFER_MS
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.common.ForwardingPlayer
+import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
+import androidx.media3.common.PlaybackException
+import androidx.media3.common.Player
+import androidx.media3.common.Player.Listener
+import androidx.media3.common.AudioAttributes
+import androidx.media3.extractor.DefaultExtractorsFactory
+import androidx.media3.common.Metadata
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.dash.DashMediaSource
+import androidx.media3.exoplayer.dash.DefaultDashChunkSource
+import androidx.media3.exoplayer.hls.HlsMediaSource
+import androidx.media3.exoplayer.smoothstreaming.DefaultSsChunkSource
+import androidx.media3.exoplayer.smoothstreaming.SsMediaSource
+import androidx.media3.exoplayer.source.MediaSource
+import androidx.media3.exoplayer.source.ProgressiveMediaSource
+import androidx.media3.datasource.DataSource
+import androidx.media3.datasource.DataSpec
+import androidx.media3.datasource.DefaultHttpDataSource
+import androidx.media3.datasource.RawResourceDataSource
+import androidx.media3.datasource.cache.CacheDataSource
+import androidx.media3.datasource.cache.SimpleCache
+import androidx.media3.common.util.Util
+import androidx.media3.datasource.DefaultDataSource
+import androidx.media3.datasource.DefaultDataSourceFactory
+import androidx.media3.session.MediaSession
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.async
@@ -87,6 +89,7 @@ import java.util.Locale
 import java.util.concurrent.TimeUnit
 
 
+@UnstableApi
 abstract class BaseAudioPlayer internal constructor(
     internal val context: Context,
     playerConfig: PlayerConfig,
@@ -208,41 +211,6 @@ abstract class BaseAudioPlayer internal constructor(
     private val notificationEventHolder = NotificationEventHolder()
     private val playerEventHolder = PlayerEventHolder()
 
-    var ratingType: Int = RatingCompat.RATING_NONE
-        set(value) {
-            field = value
-
-            mediaSession.setRatingType(ratingType)
-            mediaSessionConnector.setRatingCallback(object : MediaSessionConnector.RatingCallback {
-                override fun onCommand(
-                    player: Player,
-                    command: String,
-                    extras: Bundle?,
-                    cb: ResultReceiver?
-                ): Boolean {
-                    return true
-                }
-
-                override fun onSetRating(player: Player, rating: RatingCompat) {
-                    playerEventHolder.updateOnPlayerActionTriggeredExternally(
-                        MediaSessionCallback.RATING(
-                            rating,
-                            null
-                        )
-                    )
-                }
-
-                override fun onSetRating(player: Player, rating: RatingCompat, extras: Bundle?) {
-                    playerEventHolder.updateOnPlayerActionTriggeredExternally(
-                        MediaSessionCallback.RATING(
-                            rating,
-                            extras
-                        )
-                    )
-                }
-            })
-        }
-
     val event = EventHolder(notificationEventHolder, playerEventHolder)
 
     private var focus: AudioFocusRequestCompat? = null
@@ -250,7 +218,6 @@ abstract class BaseAudioPlayer internal constructor(
     private var wasDucking = false
 
     private val mediaSession = MediaSessionCompat(context, "KotlinAudioPlayer")
-    private val mediaSessionConnector = MediaSessionConnector(mediaSession)
 
     init {
         if (cacheConfig != null) {
@@ -271,11 +238,8 @@ abstract class BaseAudioPlayer internal constructor(
             }
             .build()
 
-        mediaSession.isActive = true
-
         val playerToUse =
             if (playerConfig.interceptPlayerActionsTriggeredExternally) createForwardingPlayer() else exoPlayer
-
         mediaSession.setCallback(object: MediaSessionCompat.Callback() {
             override fun onPlayFromMediaId(mediaId: String?, extras: Bundle?) {
                 Timber.tag("GVATest").d("playing from mediaID: %s", mediaId)
@@ -362,7 +326,6 @@ abstract class BaseAudioPlayer internal constructor(
             context,
             playerToUse,
             mediaSession,
-            mediaSessionConnector,
             notificationEventHolder,
             playerEventHolder
         )
@@ -385,10 +348,6 @@ abstract class BaseAudioPlayer internal constructor(
                 )
                 .build();
             exoPlayer.setAudioAttributes(audioAttributes, playerConfig.handleAudioFocus);
-            mediaSessionConnector.setPlayer(playerToUse)
-            mediaSessionConnector.setMediaMetadataProvider {
-                notificationManager.getMediaMetadataCompat()
-            }
         }
 
         playerEventHolder.updateAudioPlayerState(AudioPlayerState.IDLE)

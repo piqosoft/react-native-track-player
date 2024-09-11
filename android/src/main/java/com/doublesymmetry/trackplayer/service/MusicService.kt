@@ -17,6 +17,7 @@ import androidx.annotation.MainThread
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationCompat.PRIORITY_LOW
 import androidx.media.utils.MediaConstants
+import androidx.media3.common.util.UnstableApi
 import com.doublesymmetry.kotlinaudio.models.*
 import com.doublesymmetry.kotlinaudio.models.NotificationButton.*
 import com.doublesymmetry.kotlinaudio.players.QueuedAudioPlayer
@@ -42,8 +43,9 @@ import timber.log.Timber
 import java.util.concurrent.TimeUnit
 import kotlin.system.exitProcess
 import com.doublesymmetry.trackplayer.R as TrackPlayerR
-import com.google.android.exoplayer2.ui.R as ExoPlayerR
+import androidx.media3.ui.R as ExoPlayerR
 
+@UnstableApi
 @MainThread
 class MusicService : HeadlessJsMediaService() {
     private lateinit var player: QueuedAudioPlayer
@@ -144,12 +146,6 @@ class MusicService : HeadlessJsMediaService() {
 
     val state
         get() = player.playerState
-
-    var ratingType: Int
-        get() = player.ratingType
-        set(value) {
-            player.ratingType = value
-        }
 
     val playbackError
         get() = player.playbackError
@@ -290,8 +286,6 @@ class MusicService : HeadlessJsMediaService() {
             }
         }
 
-        ratingType = BundleUtils.getInt(options, "ratingType", RatingCompat.RATING_NONE)
-
         player.playerOptions.alwaysPauseOnInterruption = androidOptions?.getBoolean(PAUSE_ON_INTERRUPTION_KEY) ?: false
 
         capabilities = options.getIntegerArrayList("capabilities")?.map { Capability.values()[it] } ?: emptyList()
@@ -336,7 +330,7 @@ class MusicService : HeadlessJsMediaService() {
         }.toMutableList()
         if (customActionsList != null) {
             for (customAction in customActionsList ?: emptyList()) {
-                val customIcon = BundleUtils.getCustomIcon(this, customActions, customAction, TrackPlayerR.drawable.exo_media_action_repeat_all)
+                val customIcon = BundleUtils.getCustomIcon(this, customActions, customAction, TrackPlayerR.drawable.media3_icon_check_circle_unfilled)
                 buttonsList.add(CUSTOM_ACTION(icon=customIcon, customAction = customAction))
             }
         }

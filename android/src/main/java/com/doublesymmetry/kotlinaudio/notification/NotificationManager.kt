@@ -8,15 +8,10 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.graphics.drawable.BitmapDrawable
-import android.net.Uri
 import android.os.Build
-import android.os.Bundle
-import android.support.v4.media.MediaDescriptionCompat
 import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.RatingCompat
 import android.support.v4.media.session.MediaSessionCompat
-import android.support.v4.media.session.PlaybackStateCompat
-import androidx.annotation.DrawableRes
 import androidx.core.app.NotificationCompat
 import coil.imageLoader
 import coil.request.Disposable
@@ -32,28 +27,28 @@ import com.doublesymmetry.kotlinaudio.models.NotificationState
 import com.doublesymmetry.kotlinaudio.players.components.getAudioItemHolder
 import com.doublesymmetry.kotlinaudio.utils.saveMediaCoverToPng
 import com.doublesymmetry.trackplayer.R
-import com.google.android.exoplayer2.C
-import com.google.android.exoplayer2.Player
-import com.google.android.exoplayer2.ext.mediasession.MediaSessionConnector
-import com.google.android.exoplayer2.ext.mediasession.TimelineQueueNavigator
-import com.google.android.exoplayer2.ui.PlayerNotificationManager
-import com.google.android.exoplayer2.ui.PlayerNotificationManager.CustomActionReceiver
+import androidx.media3.common.C
+import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.ui.PlayerNotificationManager
+import androidx.media3.ui.PlayerNotificationManager.CustomActionReceiver
+import androidx.media3.session.MediaSession
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import okhttp3.Headers
 import okhttp3.Headers.Companion.toHeaders
 
+@UnstableApi
 class NotificationManager internal constructor(
     private val context: Context,
     private val player: Player,
     private val mediaSession: MediaSessionCompat,
-    private val mediaSessionConnector: MediaSessionConnector,
     val event: NotificationEventHolder,
     val playerEventHolder: PlayerEventHolder
 ) : PlayerNotificationManager.NotificationListener {
     private var pendingIntent: PendingIntent? = null
-    private val descriptionAdapter = object : PlayerNotificationManager.MediaDescriptionAdapter {
+    private val descriptionAdapter = @UnstableApi object : PlayerNotificationManager.MediaDescriptionAdapter {
         override fun getCurrentContentTitle(player: Player): CharSequence {
             return getTitle() ?: ""
         }
@@ -326,56 +321,6 @@ class NotificationManager internal constructor(
     var rewindIcon: Int? = null
     var customIcons: MutableMap<String, Int?> = mutableMapOf()
 
-    init {
-        mediaSessionConnector.setQueueNavigator(
-            object : TimelineQueueNavigator(mediaSession) {
-                override fun getSupportedQueueNavigatorActions(player: Player): Long {
-                    return buttons.fold(0) { acc, button ->
-                        acc or when (button) {
-                            is NotificationButton.NEXT -> {
-                                PlaybackStateCompat.ACTION_SKIP_TO_NEXT
-                            }
-                            is NotificationButton.PREVIOUS -> {
-                                PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS
-                            }
-                            else -> {
-                                0
-                            }
-                        }
-                    }
-                }
-
-                override fun getMediaDescription(
-                    player: Player,
-                    windowIndex: Int
-                ): MediaDescriptionCompat {
-                    val title = getTitle(windowIndex)
-                    val artist = getArtist(windowIndex)
-                    val mediaItem = if (windowIndex == null) player.currentMediaItem else player.getMediaItemAt(windowIndex)
-                    val audioItemHolder = mediaItem?.getAudioItemHolder()
-                    return MediaDescriptionCompat.Builder().apply {
-                        setTitle(title)
-                        setSubtitle(artist)
-                        setExtras(Bundle().apply {
-                            title?.let {
-                                putString(MediaMetadataCompat.METADATA_KEY_TITLE, it)
-                            }
-                            artist?.let {
-                                putString(MediaMetadataCompat.METADATA_KEY_ARTIST, it)
-                                putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_SUBTITLE, it)
-                            }
-                        })
-                        setIconUri(mediaItem?.mediaMetadata?.artworkUri ?: Uri.parse(audioItemHolder?.audioItem?.artwork
-                            ?: ""))
-                        setIconBitmap(audioItemHolder?.artworkBitmap)
-                        setMediaId(audioItemHolder?.audioItem?.mediaId)
-                    }.build()
-                }
-            }
-        )
-        mediaSessionConnector.setMetadataDeduplicationEnabled(true)
-    }
-
     /**
      * Overrides the notification metadata with the given [AudioItem].
      *
@@ -549,8 +494,6 @@ class NotificationManager internal constructor(
         if (invalidateThrottleCount++ == 0) {
             scope.launch {
                 internalNotificationManager?.invalidate()
-                mediaSessionConnector.invalidateMediaSessionQueue()
-                mediaSessionConnector.invalidateMediaSessionMetadata()
                 delay(300)
                 val wasThrottled = invalidateThrottleCount > 1
                 invalidateThrottleCount = 0
@@ -578,8 +521,6 @@ class NotificationManager internal constructor(
         stopIcon = null
         forwardIcon = null
         rewindIcon = null
-
-        updateMediaSessionPlaybackActions()
 
         pendingIntent = config.pendingIntent
         showPlayPauseButton = false
@@ -691,76 +632,6 @@ class NotificationManager internal constructor(
         }
     }
 
-    private fun updateMediaSessionPlaybackActions() {
-        mediaSessionConnector.setEnabledPlaybackActions(
-            buttons.fold(
-                PlaybackStateCompat.ACTION_SET_REPEAT_MODE
-                        or PlaybackStateCompat.ACTION_SET_SHUFFLE_MODE
-                        or PlaybackStateCompat.ACTION_SET_PLAYBACK_SPEED
-            ) { acc, button ->
-                acc or when (button) {
-                    is NotificationButton.PLAY_PAUSE -> {
-                        PlaybackStateCompat.ACTION_PLAY or PlaybackStateCompat.ACTION_PAUSE
-                    }
-                    is NotificationButton.BACKWARD -> {
-                        rewindIcon = button.icon ?: rewindIcon
-                        PlaybackStateCompat.ACTION_REWIND
-                    }
-                    is NotificationButton.FORWARD -> {
-                        forwardIcon = button.icon ?: forwardIcon
-                        PlaybackStateCompat.ACTION_FAST_FORWARD
-                    }
-                    is NotificationButton.SEEK_TO -> {
-                        PlaybackStateCompat.ACTION_SEEK_TO
-                    }
-                    is NotificationButton.STOP -> {
-                        stopIcon = button.icon ?: stopIcon
-                        PlaybackStateCompat.ACTION_STOP
-                    }
-                    is NotificationButton.CUSTOM_ACTION -> {
-                        stopIcon = button.icon ?: stopIcon
-                        customIcons[button.customAction ?: "DEFAULT_CUSTOM"] = button.icon ?: stopIcon
-                        PlaybackStateCompat.ACTION_SET_RATING
-                    }
-                    else -> {
-                        0
-                    }
-                }
-            }
-        )
-        if (needsCustomActionsToAddMissingButtons) {
-            val customActionProviders = buttons
-                .sortedBy {
-                    when (it) {
-                        is NotificationButton.BACKWARD -> 1
-                        is NotificationButton.FORWARD -> 2
-                        is NotificationButton.STOP -> 3
-                        else -> 4
-                    }
-                }
-                .mapNotNull {
-                    when (it) {
-                        is NotificationButton.BACKWARD -> {
-                            createMediaSessionAction(rewindIcon ?: DEFAULT_REWIND_ICON, REWIND)
-                        }
-                        is NotificationButton.FORWARD -> {
-                            createMediaSessionAction(forwardIcon ?: DEFAULT_FORWARD_ICON, FORWARD)
-                        }
-                        is NotificationButton.STOP -> {
-                            createMediaSessionAction(stopIcon ?: DEFAULT_STOP_ICON, STOP)
-                        }
-                        is NotificationButton.CUSTOM_ACTION -> {
-                            createMediaSessionAction(customIcons[it.customAction] ?: DEFAULT_CUSTOM_ICON, it.customAction ?: "NO_ACTION_CODE_PROVIDED")
-                        }
-                        else -> {
-                            null
-                        }
-                    }
-                }
-            mediaSessionConnector.setCustomActionProviders(*customActionProviders.toTypedArray())
-        }
-    }
-
     private fun setupInternalNotificationManager(config: NotificationConfig) {
         internalNotificationManager?.run {
             setColor(config.accentColor ?: Color.TRANSPARENT)
@@ -834,22 +705,6 @@ class NotificationManager internal constructor(
         internalNotificationManager?.setPlayer(null)
     }
 
-    private fun createMediaSessionAction(
-        @DrawableRes drawableRes: Int,
-        actionName: String
-    ): MediaSessionConnector.CustomActionProvider {
-        return object : MediaSessionConnector.CustomActionProvider {
-            override fun getCustomAction(player: Player): PlaybackStateCompat.CustomAction? {
-                return PlaybackStateCompat.CustomAction.Builder(actionName, actionName, drawableRes)
-                    .build()
-            }
-
-            override fun onCustomAction(player: Player, action: String, extras: Bundle?) {
-                handlePlayerAction(action)
-            }
-        }
-    }
-
     companion object {
         // Due to the removal of rewind, forward, and stop buttons from the standard notification
         // controls in Android 13, custom actions are implemented to support them
@@ -861,12 +716,12 @@ class NotificationManager internal constructor(
         private const val NOTIFICATION_ID = 1
         private const val CHANNEL_ID = "kotlin_audio_player"
         private val DEFAULT_STOP_ICON =
-            com.google.android.exoplayer2.ui.R.drawable.exo_notification_stop
+            androidx.media3.ui.R.drawable.exo_notification_stop
         private val DEFAULT_REWIND_ICON =
-            com.google.android.exoplayer2.ui.R.drawable.exo_notification_rewind
+            androidx.media3.ui.R.drawable.exo_notification_rewind
         private val DEFAULT_FORWARD_ICON =
-            com.google.android.exoplayer2.ui.R.drawable.exo_notification_fastforward
+            androidx.media3.ui.R.drawable.exo_notification_fastforward
         private val DEFAULT_CUSTOM_ICON =
-            com.google.android.exoplayer2.ui.R.drawable.exo_edit_mode_logo
+            androidx.media3.ui.R.drawable.exo_edit_mode_logo
     }
 }

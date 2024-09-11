@@ -8,7 +8,9 @@ import android.net.Uri
 import android.support.v4.media.RatingCompat
 import android.support.v4.media.MediaBrowserCompat.MediaItem
 import android.support.v4.media.MediaDescriptionCompat
+import androidx.annotation.OptIn
 import androidx.media.utils.MediaConstants
+import androidx.media3.common.util.UnstableApi
 import com.doublesymmetry.kotlinaudio.models.Capability
 import com.doublesymmetry.kotlinaudio.models.RepeatMode
 import com.doublesymmetry.trackplayer.extensions.NumberExt.Companion.toMilliseconds
@@ -19,8 +21,8 @@ import com.doublesymmetry.trackplayer.service.MusicService
 import com.doublesymmetry.trackplayer.utils.AppForegroundTracker
 import com.doublesymmetry.trackplayer.utils.RejectionException
 import com.facebook.react.bridge.*
-import com.google.android.exoplayer2.DefaultLoadControl.*
-import com.google.android.exoplayer2.Player
+import androidx.media3.exoplayer.DefaultLoadControl.*
+import androidx.media3.exoplayer.ExoPlayer
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -32,6 +34,7 @@ import javax.annotation.Nonnull
 /**
  * @author Milen Pivchev @mpivchev
  */
+@UnstableApi
 class MusicModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaModule(reactContext),
     ServiceConnection {
     private var playerOptions: Bundle? = null
@@ -90,7 +93,7 @@ class MusicModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
     }
 
     private fun bundleToTrack(bundle: Bundle): Track {
-        return Track(context, bundle, musicService.ratingType)
+        return Track(context, bundle, 1)
     }
 
     private fun hashmapToMediaItem(hashmap: HashMap<String, String>): MediaItem {
@@ -217,12 +220,13 @@ class MusicModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
             this["RATING_PERCENTAGE"] = RatingCompat.RATING_PERCENTAGE
 
             // Repeat Modes
-            this["REPEAT_OFF"] = Player.REPEAT_MODE_OFF
-            this["REPEAT_TRACK"] = Player.REPEAT_MODE_ONE
-            this["REPEAT_QUEUE"] = Player.REPEAT_MODE_ALL
+            this["REPEAT_OFF"] = ExoPlayer.REPEAT_MODE_OFF
+            this["REPEAT_TRACK"] = ExoPlayer.REPEAT_MODE_ONE
+            this["REPEAT_QUEUE"] = ExoPlayer.REPEAT_MODE_ALL
         }
     }
 
+    @OptIn(UnstableApi::class)
     @ReactMethod
     fun setupPlayer(data: ReadableMap?, promise: Promise) {
         if (isServiceBound) {
@@ -424,7 +428,7 @@ class MusicModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
             } else {
                 val context: ReactContext = context
                 val track = musicService.tracks[index]
-                track.setMetadata(context, Arguments.toBundle(map), musicService.ratingType)
+                track.setMetadata(context, Arguments.toBundle(map), 1)
                 musicService.updateMetadataForTrack(index, track)
 
                 callback.resolve(null)

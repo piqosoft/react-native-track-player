@@ -12,7 +12,7 @@ import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
 import androidx.annotation.RequiresApi
-import com.google.android.exoplayer2.upstream.RawResourceDataSource
+import androidx.media3.datasource.RawResourceDataSource
 import java.io.OutputStream
 
 fun isUriLocalFile(uri: Uri?): Boolean {
