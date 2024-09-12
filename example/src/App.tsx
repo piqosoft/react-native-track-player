@@ -1,10 +1,4 @@
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Linking,
@@ -19,46 +13,18 @@ import TrackPlayer, {
   AndroidAutoContentStyle,
 } from 'react-native-track-player';
 
-import {
-  Button,
-  OptionSheet,
-  ActionSheet,
-  PlayerControls,
-  Progress,
-  Spacer,
-  TrackInfo,
-} from './components';
+import { PlayerControls, Progress, Spacer, TrackInfo } from './components';
 import { QueueInitialTracksService, SetupService } from './services';
 import DemoAndroidAutoHierarchy from './services/AndroidAutoHierarchy';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import BottomSheet from '@gorhom/bottom-sheet';
 import { SponsorCard } from './components/SponsorCard';
 
 export default function App() {
-  return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <Inner />
-    </GestureHandlerRootView>
-  );
+  return <Inner />;
 }
 
 const Inner: React.FC = () => {
   const track = useActiveTrack();
   const isPlayerReady = useSetupPlayer();
-
-  // options bottom sheet
-  const optionsSheetRef = useRef<BottomSheet>(null);
-  const optionsSheetSnapPoints = useMemo(() => ['40%'], []);
-  const handleOptionsPress = useCallback(() => {
-    optionsSheetRef.current?.snapToIndex(0);
-  }, [optionsSheetRef]);
-
-  // actions bottom sheet
-  const actionsSheetRef = useRef<BottomSheet>(null);
-  const actionsSheetSnapPoints = useMemo(() => ['40%'], []);
-  const handleActionsPress = useCallback(() => {
-    actionsSheetRef.current?.snapToIndex(0);
-  }, [actionsSheetRef]);
 
   useEffect(() => {
     function deepLinkHandler(data: { url: string }) {
@@ -88,10 +54,6 @@ const Inner: React.FC = () => {
     <SafeAreaView style={styles.screenContainer}>
       <StatusBar barStyle={'light-content'} />
       <View style={styles.contentContainer}>
-        <View style={styles.topBarContainer}>
-          <Button title="Options" onPress={handleOptionsPress} type="primary" />
-          <Button title="Actions" onPress={handleActionsPress} type="primary" />
-        </View>
         <TrackInfo track={track} />
         <Progress live={track?.isLiveStream} />
         <Spacer />
@@ -99,26 +61,6 @@ const Inner: React.FC = () => {
         <Spacer mode={'expand'} />
         <SponsorCard />
       </View>
-      <BottomSheet
-        index={-1}
-        ref={optionsSheetRef}
-        enablePanDownToClose={true}
-        snapPoints={optionsSheetSnapPoints}
-        handleIndicatorStyle={styles.sheetHandle}
-        backgroundStyle={styles.sheetBackgroundContainer}
-      >
-        <OptionSheet />
-      </BottomSheet>
-      <BottomSheet
-        index={-1}
-        ref={actionsSheetRef}
-        enablePanDownToClose={true}
-        snapPoints={actionsSheetSnapPoints}
-        handleIndicatorStyle={styles.sheetHandle}
-        backgroundStyle={styles.sheetBackgroundContainer}
-      >
-        <ActionSheet />
-      </BottomSheet>
     </SafeAreaView>
   );
 };
