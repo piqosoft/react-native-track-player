@@ -235,8 +235,8 @@ abstract class BaseAudioPlayer internal constructor(
             }
             .build()
 
-        val playerToUse =
-            if (playerConfig.interceptPlayerActionsTriggeredExternally) createForwardingPlayer() else exoPlayer
+        val playerToUse = createForwardingPlayer()
+        // if (playerConfig.interceptPlayerActionsTriggeredExternally) createForwardingPlayer() else exoPlayer
 
         class Media3SessionCallback: MediaSession.Callback {
             override fun onCustomCommand(
@@ -294,6 +294,23 @@ abstract class BaseAudioPlayer internal constructor(
 
     private fun createForwardingPlayer(): ForwardingPlayer {
         return object : ForwardingPlayer(exoPlayer) {
+
+            override fun isCommandAvailable(command: Int): Boolean {
+                return when (command) {
+                    COMMAND_SEEK_TO_NEXT_MEDIA_ITEM -> true
+                    COMMAND_SEEK_TO_NEXT -> true
+                    else -> super.isCommandAvailable(command)
+                }
+
+            }
+
+            override fun getAvailableCommands(): Player.Commands {
+                return super.getAvailableCommands().buildUpon()
+                    .add(COMMAND_SEEK_TO_NEXT_MEDIA_ITEM)
+                    .add(COMMAND_SEEK_TO_NEXT)
+                    .build()
+            }
+
             override fun play() {
                 playerEventHolder.updateOnPlayerActionTriggeredExternally(MediaSessionCallback.PLAY)
             }
