@@ -58,7 +58,7 @@ class MusicService : HeadlessJsMediaService() {
         MediaConstants.DESCRIPTION_EXTRAS_VALUE_CONTENT_STYLE_LIST_ITEM)
 
     fun setPlaybackState(mediaID: String) {
-        player.setPlaybackState(mediaID)
+        // player.setPlaybackState(mediaID)
     }
 
     @ExperimentalCoroutinesApi
@@ -797,7 +797,7 @@ class MusicService : HeadlessJsMediaService() {
                 when (it) {
                     is MediaSessionCallback.RATING -> {
                         Bundle().apply {
-                            setRating(this, "rating", it.rating)
+                            // setRating(this, "rating", it.rating)
                             emit(MusicEvents.BUTTON_SET_RATING, this)
                         }
                     }
