@@ -9,6 +9,7 @@ import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.graphics.drawable.BitmapDrawable
 import android.os.Build
+import android.os.Bundle
 import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.RatingCompat
 import androidx.core.app.NotificationCompat
@@ -33,11 +34,13 @@ import androidx.media3.ui.PlayerNotificationManager
 import androidx.media3.ui.PlayerNotificationManager.CustomActionReceiver
 import androidx.media3.session.CommandButton
 import androidx.media3.session.MediaSession
+import androidx.media3.session.SessionCommand
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import okhttp3.Headers
 import okhttp3.Headers.Companion.toHeaders
+import timber.log.Timber
 
 @UnstableApi
 class NotificationManager internal constructor(
@@ -607,6 +610,12 @@ class NotificationManager internal constructor(
                     CommandButton.Builder()
                         .setPlayerCommand(Player.COMMAND_STOP)
                         .setIconResId(it.icon ?:  androidx.media3.ui.R.drawable.exo_icon_stop)
+                        .build()
+                }
+                is NotificationButton.CUSTOM_ACTION -> {
+                    CommandButton.Builder()
+                        .setSessionCommand(SessionCommand(it.customAction ?: "undefinedCommand", Bundle()))
+                        .setIconResId(it.icon ?:  androidx.media3.ui.R.drawable.exo_ic_check)
                         .build()
                 }
                 else -> {
