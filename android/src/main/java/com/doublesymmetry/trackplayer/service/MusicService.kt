@@ -12,12 +12,12 @@ import android.os.Bundle
 import android.os.IBinder
 import android.provider.Settings
 import android.support.v4.media.MediaBrowserCompat.MediaItem
+import android.support.v4.media.RatingCompat
 import androidx.annotation.MainThread
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationCompat.PRIORITY_LOW
 import androidx.media.utils.MediaConstants
 import androidx.media3.common.util.UnstableApi
-import androidx.media3.session.MediaSession
 import com.doublesymmetry.kotlinaudio.models.*
 import com.doublesymmetry.kotlinaudio.models.NotificationButton.*
 import com.doublesymmetry.kotlinaudio.players.QueuedAudioPlayer
@@ -33,6 +33,7 @@ import com.doublesymmetry.trackplayer.model.TrackAudioItem
 import com.doublesymmetry.trackplayer.module.MusicEvents
 import com.doublesymmetry.trackplayer.module.MusicEvents.Companion.METADATA_PAYLOAD_KEY
 import com.doublesymmetry.trackplayer.utils.BundleUtils
+import com.doublesymmetry.trackplayer.utils.BundleUtils.setRating
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.jstasks.HeadlessJsTaskConfig
 import com.facebook.react.modules.core.DeviceEventManagerModule
@@ -48,7 +49,6 @@ import androidx.media3.ui.R as ExoPlayerR
 @MainThread
 class MusicService : HeadlessJsMediaService() {
     private lateinit var player: QueuedAudioPlayer
-    private lateinit var mediaLibrarySession: MediaLibrarySession
     private val binder = MusicBinder()
     private val scope = MainScope()
     private var progressUpdateJob: Job? = null
@@ -64,14 +64,7 @@ class MusicService : HeadlessJsMediaService() {
     @ExperimentalCoroutinesApi
     override fun onCreate() {
         Timber.tag("GVA-RNTP").d("RNTP musicservice created.")
-        mediaLibrarySession =
-            MediaLibrarySession.Builder(this, player.exoPlayer, MySessionCallback())
-                .build()
         super.onCreate()
-    }
-
-    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? {
-        return mediaLibrarySession
     }
 
     /**
@@ -974,13 +967,12 @@ class MusicService : HeadlessJsMediaService() {
 
     @MainThread
     override fun onDestroy() {
+        super.onDestroy()
         if (::player.isInitialized) {
             player.destroy()
         }
-        mediaLibrarySession.release()
 
         progressUpdateJob?.cancel()
-        super.onDestroy()
     }
 
     @MainThread

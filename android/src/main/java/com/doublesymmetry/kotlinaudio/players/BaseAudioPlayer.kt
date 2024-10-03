@@ -95,8 +95,8 @@ abstract class BaseAudioPlayer internal constructor(
     private val cacheConfig: CacheConfig?,
     mediaSessionCallback: AAMediaSessionCallBack
 ) : AudioManager.OnAudioFocusChangeListener {
-    val exoPlayer: ExoPlayer
-    val mediaSession: MediaSession
+    protected val exoPlayer: ExoPlayer
+    protected val mediaSession: MediaSession
 
     private var cache: SimpleCache? = null
     private val scope = MainScope()

@@ -9,7 +9,6 @@ import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.graphics.drawable.BitmapDrawable
 import android.os.Build
-import android.os.Bundle
 import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.RatingCompat
 import androidx.core.app.NotificationCompat
@@ -33,20 +32,18 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.ui.PlayerNotificationManager
 import androidx.media3.ui.PlayerNotificationManager.CustomActionReceiver
 import androidx.media3.session.CommandButton
-import androidx.media3.session.MediaSession
-import androidx.media3.session.SessionCommand
+import android.support.v4.media.session.MediaSessionCompat
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import okhttp3.Headers
 import okhttp3.Headers.Companion.toHeaders
-import timber.log.Timber
 
 @UnstableApi
 class NotificationManager internal constructor(
     private val context: Context,
     private val player: Player,
-    private val mediaSession: MediaSession,
+    private val mediaSession: MediaSessionCompat,
     val event: NotificationEventHolder,
     val playerEventHolder: PlayerEventHolder
 ) : PlayerNotificationManager.NotificationListener {
@@ -583,46 +580,11 @@ class NotificationManager internal constructor(
                             }
                         }
                     }.build().apply {
-                        setMediaSessionToken(mediaSession.sessionCompatToken)
+                        setMediaSessionToken(mediaSession.sessionToken)
                         setPlayer(player)
                     }
         }
         setupInternalNotificationManager(config)
-        mediaSession.setCustomLayout(getCustomButtons(config.buttons))
-    }
-    private fun getCustomButtons(newButtons: List<NotificationButton>): List<CommandButton> {
-
-        return newButtons.mapNotNull {
-            when (it) {
-                is NotificationButton.BACKWARD -> {
-                    CommandButton.Builder()
-                        .setPlayerCommand(Player.COMMAND_SEEK_BACK)
-                        .setIconResId(it.icon ?:  androidx.media3.ui.R.drawable.exo_ic_rewind)
-                        .build()
-                }
-                is NotificationButton.FORWARD -> {
-                    CommandButton.Builder()
-                        .setPlayerCommand(Player.COMMAND_SEEK_FORWARD)
-                        .setIconResId(it.icon ?:  androidx.media3.ui.R.drawable.exo_ic_forward)
-                        .build()
-                }
-                is NotificationButton.STOP -> {
-                    CommandButton.Builder()
-                        .setPlayerCommand(Player.COMMAND_STOP)
-                        .setIconResId(it.icon ?:  androidx.media3.ui.R.drawable.exo_icon_stop)
-                        .build()
-                }
-                is NotificationButton.CUSTOM_ACTION -> {
-                    CommandButton.Builder()
-                        .setSessionCommand(SessionCommand(it.customAction ?: "undefinedCommand", Bundle()))
-                        .setIconResId(it.icon ?:  androidx.media3.ui.R.drawable.exo_ic_check)
-                        .build()
-                }
-                else -> {
-                    null
-                }
-            }
-        }
     }
 
     fun isNotificationButtonsChanged(newButtons: List<NotificationButton>): Boolean {
