@@ -7,6 +7,7 @@ import {
   StyleSheet,
   View,
   Platform,
+  Text,
 } from 'react-native';
 import TrackPlayer, {
   useActiveTrack,
@@ -17,6 +18,34 @@ import { PlayerControls, Progress, Spacer, TrackInfo } from './components';
 import { QueueInitialTracksService, SetupService } from './services';
 import DemoAndroidAutoHierarchy from './services/AndroidAutoHierarchy';
 import { SponsorCard } from './components/SponsorCard';
+const useHook = (interval = 1000) => {
+  const [myNum, setMyNum] = React.useState(0);
+
+  const update = () => setMyNum((v) => v + 1);
+
+  React.useEffect(() => {
+    let mounted = true;
+
+    const awaitUpdate = async () => {
+      if (!mounted) {
+        return;
+      }
+      console.log('hook update', myNum);
+      update();
+      await new Promise<void>((resolve) => setTimeout(resolve, interval));
+      if (!mounted) {
+        return;
+      }
+      awaitUpdate();
+    };
+    awaitUpdate();
+    return () => {
+      mounted = false;
+    };
+  }, [interval]);
+
+  return myNum;
+};
 
 export default function App() {
   return <Inner />;
@@ -25,6 +54,7 @@ export default function App() {
 const Inner: React.FC = () => {
   const track = useActiveTrack();
   const isPlayerReady = useSetupPlayer();
+  const num = useHook();
 
   useEffect(() => {
     function deepLinkHandler(data: { url: string }) {
@@ -53,6 +83,7 @@ const Inner: React.FC = () => {
   return (
     <SafeAreaView style={styles.screenContainer}>
       <StatusBar barStyle={'light-content'} />
+      <Text>{num}</Text>
       <View style={styles.contentContainer}>
         <TrackInfo track={track} />
         <Progress live={track?.isLiveStream} />
