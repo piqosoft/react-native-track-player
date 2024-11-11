@@ -30,6 +30,7 @@ import com.lovegaoshi.kotlinaudio.models.PlayerOptions
 import com.lovegaoshi.kotlinaudio.models.PositionChangedReason
 import com.lovegaoshi.kotlinaudio.models.setWakeMode
 import com.lovegaoshi.kotlinaudio.player.components.Cache
+import com.lovegaoshi.kotlinaudio.player.components.FFTListener
 import com.lovegaoshi.kotlinaudio.player.components.FocusManager
 import com.lovegaoshi.kotlinaudio.player.components.MediaFactory
 import com.lovegaoshi.kotlinaudio.player.components.setupBuffer
@@ -43,7 +44,7 @@ import java.util.concurrent.TimeUnit
 
 abstract class AudioPlayer internal constructor(
     private val context: Context,
-    val options: PlayerOptions = PlayerOptions()
+    val options: PlayerOptions = PlayerOptions(),
 ) {
 
     // for crossfading
